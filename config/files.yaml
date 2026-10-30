@@ -1,0 +1,36 @@
+# The spaces of this Files and the rules for sharing and keeping. Files keeps OpenCloud in step with this file: it is
+# read again within a minute of a save, applied whole or not at all, and a mistake leaves the last good version in place
+# (see the README).
+#
+# A space taken out of the file is disabled, not deleted; its files stay in OpenCloud.
+
+# Every link to someone outside expires; this is the longest it may last, and whether it needs a password.
+links:
+  maxDays: 90
+  passwordRequired: true
+
+# What is deleted stays in the recycle bin this long, then Files removes it for good.
+bin:
+  keepDays: 30
+
+# Each person's own space. Leave quota out to keep OpenCloud's default.
+personal:
+  quota: 20GB
+
+spaces:
+  - name: Finance
+    kind: team
+    quota: 100GB
+    # Identity groups, by the name their groups claim carries: viewer, editor or manager.
+    members:
+      - { group: finance, role: editor }
+      - { group: finance-leads, role: manager }
+  - name: Northwind rollout
+    kind: project
+    description: The Northwind customer rollout.
+    quota: 20GB
+    members:
+      - { group: project-northwind, role: editor }
+      - { group: everyone, role: viewer }
+  - name: Office move 2025
+    disabled: true

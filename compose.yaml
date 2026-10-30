@@ -1,0 +1,100 @@
+# Files: the web UI, the spaces file and the link rules (this repository) next to OpenCloud, which keeps the files and
+# syncs them with its desktop and phone apps. See the README for the first start: OpenCloud's own setup, the app token
+# Files uses, and signing in through Identity.
+#
+#   openssl rand -hex 32 > openasy-kek          # Files' key: sign-in secrets (ADR 0021). Keep it with your backups
+#   docker compose up -d opencloud
+#   docker compose exec opencloud opencloud auth-app create --user-name=admin --expiration=8760h   # put the token in opencloud-token
+#   docker compose up -d files
+#   docker compose logs files | grep 'no owner yet'   # the one-time link that creates the owner account
+services:
+  opencloud:
+    # Pin the exact version you run; Files is written against OpenCloud 7.2 (the production line), see the README.
+    image: opencloudeu/opencloud:7.2.4
+    restart: unless-stopped
+    # The first start writes a configuration with random secrets; later starts keep it.
+    entrypoint: ["/bin/sh", "-c", "opencloud init || true; opencloud server"]
+    ports:
+      - "127.0.0.1:9200:9200" # OpenCloud's web, WebDAV and the sync apps; put a TLS proxy in front
+    volumes:
+      - opencloud-config:/etc/opencloud
+      - opencloud-data:/var/lib/opencloud # every file: keep it in your backups
+      - opencloud-audit:/var/lib/opencloud-audit # the audit log Files reads link openings from
+    environment:
+      # The address people and the sync apps open OpenCloud at, with https:// behind your TLS proxy.
+      OC_URL: ${OPENCLOUD_PUBLIC_URL:-https://cloud.example.com}
+      PROXY_TLS: "false"
+      # Files on disk (posix), readable outside OpenCloud too. For an S3-compatible store instead, see the README.
+      STORAGE_USERS_DRIVER: posix
+      # Sign-in through Identity (OIDC); OpenCloud's own identity provider does not run. Its built-in LDAP (idm) keeps
+      # the accounts and groups made at sign-in and by Files.
+      OC_EXCLUDE_RUN_SERVICES: idp
+      OC_OIDC_ISSUER: ${IDENTITY_URL:-https://login.example.com}
+      IDP_DOMAIN: ${IDENTITY_HOST:-login.example.com}
+      PROXY_OIDC_REWRITE_WELLKNOWN: "true"
+      # Identity's access tokens are checked at its userinfo endpoint.
+      PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD: none
+      # Accounts are named by email, the same way Files makes them, and follow Identity's groups at each sign-in.
+      PROXY_AUTOPROVISION_ACCOUNTS: "true"
+      PROXY_USER_OIDC_CLAIM: email
+      PROXY_USER_CS3_CLAIM: username
+      PROXY_AUTOPROVISION_CLAIM_USERNAME: email
+      PROXY_AUTOPROVISION_CLAIM_GROUPS: groups
+      GRAPH_USERNAME_MATCH: none
+      GRAPH_ASSIGN_DEFAULT_USER_ROLE: "true"
+      # App tokens: the one Files signs in with, and the short-lived ones it makes to act as each person.
+      PROXY_ENABLE_APP_AUTH: "true"
+      AUTH_APP_ENABLE_IMPERSONATION: "true"
+      # The audit log, as JSON lines in a file Files reads.
+      OC_ADD_RUN_SERVICES: audit
+      AUDIT_LOG_TO_FILE: "true"
+      AUDIT_LOG_TO_CONSOLE: "false"
+      AUDIT_FORMAT: json
+      AUDIT_FILEPATH: /var/lib/opencloud-audit/audit.log
+      # Links made in OpenCloud's own apps need a password too; keep it the same as links.passwordRequired.
+      OC_SHARING_PUBLIC_SHARE_MUST_HAVE_PASSWORD: "true"
+
+  files:
+    image: ghcr.io/openasy/files:0.1.0
+    restart: unless-stopped
+    depends_on: [opencloud]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    ports:
+      - "127.0.0.1:8080:8080" # web UI and API; put a TLS proxy in front
+    volumes:
+      - files-data:/data # SQLite database: sign-in, links, handovers and the history of syncs; the files are in OpenCloud
+      - ./config:/config:ro # files.yaml, the spaces and rules; mount the folder so an editor's save reaches it
+      - opencloud-audit:/audit:ro
+    secrets:
+      - openasy-kek # mounted at /run/secrets/openasy-kek
+      - opencloud-token # mounted at /run/secrets/opencloud-token
+    environment:
+      # The address people open Files at; with a TLS proxy, its https:// URL.
+      FILES_PUBLIC_URL: ${FILES_PUBLIC_URL:-http://localhost:8080}
+      FILES_CONFIG: /config/files.yaml
+      FILES_OPENCLOUD_URL: http://opencloud:9200
+      FILES_OPENCLOUD_PUBLIC_URL: ${OPENCLOUD_PUBLIC_URL:-https://cloud.example.com}
+      FILES_OPENCLOUD_USER: admin
+      FILES_AUDIT_LOG: /audit/audit.log
+      # Sign in with Identity (OIDC), see the README. Everyone with files signs in as a user, and their groups decide
+      # which spaces they are in:
+      # OPENASY_OIDC_ISSUER: https://login.example.com
+      # OPENASY_OIDC_CLIENT_ID: files
+      # OPENASY_OIDC_CLIENT_SECRET: ${OPENASY_OIDC_CLIENT_SECRET}
+      # OPENASY_OIDC_PROVIDER: openasy-identity
+      # OPENASY_OIDC_DEFAULT_ROLE: user
+
+volumes:
+  opencloud-config:
+  opencloud-data:
+  opencloud-audit:
+  files-data:
+
+secrets:
+  openasy-kek:
+    file: ./openasy-kek
+  opencloud-token:
+    file: ./opencloud-token

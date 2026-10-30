@@ -1,0 +1,2664 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAsy Files API",
+    "version": "0.1.0",
+    "summary": "The company's files in team and project spaces on OpenCloud, with expiring links.",
+    "description": "Every screen of Files uses this API, and so can your scripts (ADR 0014). Within `/api/v1` changes are additive only; anything removed is deprecated first (ADR 0024). Errors use Problem Details (RFC 9457).\n\nSpaces, their groups and the rules for links and the recycle bin are set in files.yaml, never through the API; Files keeps OpenCloud in step with it. A person's own files and links take the session of that person, never an API token, and go to OpenCloud as that person. Everything else takes a session or an API token, and each operation names the role it needs (`x-openasy-role`: user, viewer, editor, admin; ADR 0003).\n\nSign-in, members and API tokens are under `/api/v1/auth`, provided by [@openasy/auth](https://github.com/openasy/auth#routes).",
+    "license": {
+      "name": "AGPL-3.0-only",
+      "identifier": "AGPL-3.0-only"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This Files"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Files",
+      "description": "A person's own spaces and files."
+    },
+    {
+      "name": "Links",
+      "description": "Links to people outside, within the rules of files.yaml."
+    },
+    {
+      "name": "Recycle bin",
+      "description": "What was deleted, until bin.keepDays."
+    },
+    {
+      "name": "Spaces",
+      "description": "The spaces as files.yaml sets them, and handovers when someone leaves."
+    },
+    {
+      "name": "Server",
+      "description": "Keeping OpenCloud in step with the file."
+    },
+    {
+      "name": "Product",
+      "description": "Version and overview of this Files."
+    }
+  ],
+  "paths": {
+    "/api/v1/me": {
+      "get": {
+        "operationId": "getMe",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Your spaces",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "responses": {
+          "200": {
+            "description": "Your own space and the spaces your Identity groups are members of, with the rules that apply.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/items": {
+      "get": {
+        "operationId": "listFolder",
+        "tags": [
+          "Files"
+        ],
+        "summary": "A folder",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "A path in the space, such as Audit 2026/Trial balance 2026-09.xlsx; empty for its top.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The folder and what is in it, folders and files.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Folder"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      },
+      "delete": {
+        "operationId": "deleteItem",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Delete a file or folder",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "It goes to the recycle bin, where it is kept bin.keepDays. Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "A path in the space, such as Audit 2026/Trial balance 2026-09.xlsx; empty for its top.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Moved to the space's recycle bin."
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/folders": {
+      "post": {
+        "operationId": "createFolder",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Make a folder",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The new folder, such as Audit 2026/Receipts."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Made.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "path"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/content": {
+      "get": {
+        "operationId": "download",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Download a file",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "A path in the space, such as Audit 2026/Trial balance 2026-09.xlsx; empty for its top.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, always as a download.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      },
+      "put": {
+        "operationId": "upload",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Upload a file",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "The body is the file, sent on to OpenCloud as it arrives; it needs a Content-Length. A space's quota is set in files.yaml. Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "A path in the space, such as Audit 2026/Trial balance 2026-09.xlsx; empty for its top.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored; an existing file keeps its earlier content as a version."
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "507": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/preview": {
+      "get": {
+        "operationId": "preview",
+        "tags": [
+          "Files"
+        ],
+        "summary": "A picture of a file",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "A path in the space, such as Audit 2026/Trial balance 2026-09.xlsx; empty for its top.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A picture made by OpenCloud's thumbnails service.",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/versions": {
+      "get": {
+        "operationId": "listVersions",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Earlier versions of a file",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionList"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/versions/restore": {
+      "post": {
+        "operationId": "restoreVersion",
+        "tags": [
+          "Files"
+        ],
+        "summary": "Bring back an earlier version",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fileId",
+                  "key",
+                  "path"
+                ],
+                "properties": {
+                  "fileId": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The version is the file's content again; the content it replaced is kept as a version."
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/drives/{drive}/links": {
+      "get": {
+        "operationId": "listItemLinks",
+        "tags": [
+          "Links"
+        ],
+        "summary": "Links on a file or folder",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The links to people outside on this item, as OpenCloud has them now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemLinkList"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      },
+      "post": {
+        "operationId": "createLink",
+        "tags": [
+          "Links"
+        ],
+        "summary": "Share by link",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "A link always expires, at most links.maxDays from today, and has a password when links.passwordRequired is set in files.yaml. Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "drive",
+            "in": "path",
+            "required": true,
+            "description": "The space, by its OpenCloud drive id, from /api/v1/me.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewLink"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The link; send the password another way.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/links": {
+      "get": {
+        "operationId": "listLinks",
+        "tags": [
+          "Links"
+        ],
+        "summary": "Links to people outside",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "responses": {
+          "200": {
+            "description": "Every link for viewers and up, as the last sync found them; your own for everyone else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/links/{id}": {
+      "delete": {
+        "operationId": "stopLink",
+        "tags": [
+          "Links"
+        ],
+        "summary": "Stop a link",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Its maker may, and so may editors and up. Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The link no longer works."
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/links/{id}/opens": {
+      "get": {
+        "operationId": "listLinkOpens",
+        "tags": [
+          "Links"
+        ],
+        "summary": "What was opened through a link",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "From OpenCloud's audit log, newest first: when, and whether the password was right.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkOpens"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/bin": {
+      "get": {
+        "operationId": "getBin",
+        "tags": [
+          "Recycle bin"
+        ],
+        "summary": "Your recycle bins",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "responses": {
+          "200": {
+            "description": "What was deleted in your spaces, and until when it is kept.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bin"
+                }
+              }
+            }
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/bin/restore": {
+      "post": {
+        "operationId": "restoreFromBin",
+        "tags": [
+          "Recycle bin"
+        ],
+        "summary": "Bring something back",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Needs a signed-in person, any role; API tokens are refused. It goes to OpenCloud as that person.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "driveId",
+                  "key",
+                  "location"
+                ],
+                "properties": {
+                  "driveId": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Back where it was."
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/api/v1/spaces": {
+      "get": {
+        "operationId": "listSpaces",
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Spaces",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Spaces, their groups and the rules are set in files.yaml (FILES_CONFIG) only. Needs the viewer role.",
+        "responses": {
+          "200": {
+            "description": "The spaces as files.yaml sets them, with their state and size in OpenCloud at the last sync.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "viewer"
+      }
+    },
+    "/api/v1/handovers": {
+      "get": {
+        "operationId": "listHandovers",
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Handovers",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Needs the viewer role.",
+        "responses": {
+          "200": {
+            "description": "Planned, done and cancelled handovers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "viewer"
+      },
+      "post": {
+        "operationId": "planHandover",
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Plan a handover",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "On the day, a space named after the person is made with their manager as its manager, their own files are copied into it, and their OpenCloud account is disabled. Their own space is kept as it is. Needs the admin role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewHandover"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Planned; a handover for today or earlier runs at once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Handover"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "admin"
+      }
+    },
+    "/api/v1/handovers/{id}": {
+      "delete": {
+        "operationId": "cancelHandover",
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Cancel a handover",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Needs the admin role.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cancelled."
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "admin"
+      }
+    },
+    "/api/v1/sync": {
+      "get": {
+        "operationId": "getSync",
+        "tags": [
+          "Server"
+        ],
+        "summary": "Syncs with OpenCloud",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Needs the viewer role.",
+        "responses": {
+          "200": {
+            "description": "The last sync and the history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncHistory"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "viewer"
+      },
+      "post": {
+        "operationId": "sync",
+        "tags": [
+          "Server"
+        ],
+        "summary": "Sync with OpenCloud now",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Makes and updates spaces, their groups and quotas, disables spaces that left the file, shortens links that last too long and empties recycle bins after bin.keepDays. This also happens after each change of the file and every five minutes. Needs the admin role.",
+        "responses": {
+          "200": {
+            "description": "What was changed in OpenCloud.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "admin"
+      }
+    },
+    "/api/v1/summary": {
+      "get": {
+        "operationId": "getSummary",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Overview",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Needs the viewer role.",
+        "responses": {
+          "200": {
+            "description": "Spaces, storage, links, the file and the last sync.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "viewer"
+      }
+    },
+    "/api/v1/version": {
+      "get": {
+        "operationId": "getVersion",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Version",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The running version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Version"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "operationId": "listProducts",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Other products of this install",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Needs the user role.",
+        "responses": {
+          "200": {
+            "description": "From OPENASY_PRODUCTS, for the product switcher.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "user"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "liveness",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Liveness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The process is running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readiness",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Readiness",
+        "security": [],
+        "description": "Ready while the database answers.",
+        "responses": {
+          "200": {
+            "description": "Ready to serve.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "metrics",
+        "tags": [
+          "Product"
+        ],
+        "summary": "Prometheus metrics",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Metrics in the Prometheus text format.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-openasy-session",
+        "description": "The browser session after signing in (`openasy-session` when Files runs on plain http://localhost). Requests that change something must come from the Files origin."
+      },
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "An API token created under Settings → API tokens (`oa_files_...`): one role, always an expiry (ADR 0003)."
+      },
+      "adminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Only when Files is started by its tests or a local script: one shared token with the admin role. A production install does not have it."
+      }
+    },
+    "responses": {
+      "Problem": {
+        "description": "An error, as RFC 9457 Problem Details.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "invalid-token",
+              "invalid-json",
+              "invalid-body",
+              "not-found",
+              "not-allowed",
+              "conflict",
+              "quota-exceeded",
+              "opencloud-unavailable",
+              "payload-too-large",
+              "internal-error",
+              "unauthenticated",
+              "invalid-credentials",
+              "mfa-required",
+              "mfa-setup-required",
+              "forbidden",
+              "cross-site"
+            ],
+            "description": "Stable; match on this."
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "ProductLink": {
+        "type": "object",
+        "required": [
+          "id",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The product, as OpenAsy names it.",
+            "examples": [
+              "infrastructure"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The address people open it at.",
+            "examples": [
+              "https://infra.example.com"
+            ]
+          }
+        }
+      },
+      "ProductList": {
+        "type": "object",
+        "required": [
+          "products"
+        ],
+        "properties": {
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductLink"
+            }
+          }
+        }
+      },
+      "Version": {
+        "type": "object",
+        "required": [
+          "product",
+          "version"
+        ],
+        "properties": {
+          "product": {
+            "const": "files"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ConfigFile": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "path",
+          "appliedAt",
+          "spaces",
+          "error",
+          "text"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "spaces": {
+            "type": "integer"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the file on disk is not applied; the last good version stays until it is fixed."
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The text of the version that is applied."
+          }
+        },
+        "description": "files.yaml and whether it is applied; null before it was first read."
+      },
+      "Policy": {
+        "type": "object",
+        "required": [
+          "links",
+          "bin",
+          "personal"
+        ],
+        "properties": {
+          "links": {
+            "type": "object",
+            "required": [
+              "maxDays",
+              "passwordRequired"
+            ],
+            "properties": {
+              "maxDays": {
+                "type": "integer"
+              },
+              "passwordRequired": {
+                "type": "boolean"
+              }
+            }
+          },
+          "bin": {
+            "type": "object",
+            "required": [
+              "keepDays"
+            ],
+            "properties": {
+              "keepDays": {
+                "type": "integer"
+              }
+            }
+          },
+          "personal": {
+            "type": "object",
+            "required": [
+              "quota"
+            ],
+            "properties": {
+              "quota": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "description": "The rules of files.yaml."
+      },
+      "SyncResult": {
+        "type": "object",
+        "required": [
+          "at",
+          "ok",
+          "created",
+          "updated",
+          "disabled",
+          "links",
+          "purged",
+          "error"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updated": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disabled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "links": {
+            "type": "integer",
+            "description": "Links shortened to links.maxDays."
+          },
+          "purged": {
+            "type": "integer",
+            "description": "Items removed from recycle bins after bin.keepDays."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SyncHistory": {
+        "type": "object",
+        "required": [
+          "last",
+          "runs"
+        ],
+        "properties": {
+          "last": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SyncResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "ok",
+                "created",
+                "updated",
+                "disabled",
+                "links",
+                "purged",
+                "error"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "created": {
+                  "type": "integer"
+                },
+                "updated": {
+                  "type": "integer"
+                },
+                "disabled": {
+                  "type": "integer"
+                },
+                "links": {
+                  "type": "integer"
+                },
+                "purged": {
+                  "type": "integer"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "required": [
+          "spaces",
+          "disabled",
+          "personal",
+          "stored",
+          "file",
+          "sync",
+          "policy",
+          "openCloudUrl",
+          "links",
+          "handoversPlanned"
+        ],
+        "properties": {
+          "spaces": {
+            "type": "integer"
+          },
+          "disabled": {
+            "type": "integer"
+          },
+          "personal": {
+            "type": "integer",
+            "description": "People's own spaces in OpenCloud."
+          },
+          "stored": {
+            "type": "integer",
+            "description": "Bytes over every space, at the last sync."
+          },
+          "file": {
+            "$ref": "#/components/schemas/ConfigFile"
+          },
+          "sync": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SyncResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy"
+          },
+          "openCloudUrl": {
+            "type": "string",
+            "description": "Where people open OpenCloud and point its desktop and phone apps."
+          },
+          "links": {
+            "type": "object",
+            "required": [
+              "working",
+              "expiringThisWeek",
+              "withoutPassword",
+              "openedThisWeek"
+            ],
+            "properties": {
+              "working": {
+                "type": "integer"
+              },
+              "expiringThisWeek": {
+                "type": "integer"
+              },
+              "withoutPassword": {
+                "type": "integer"
+              },
+              "openedThisWeek": {
+                "type": "integer"
+              }
+            }
+          },
+          "handoversPlanned": {
+            "type": "integer"
+          }
+        }
+      },
+      "Member": {
+        "type": "object",
+        "required": [
+          "group",
+          "role"
+        ],
+        "properties": {
+          "group": {
+            "type": "string",
+            "description": "An Identity group, by name."
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "editor",
+              "manager"
+            ]
+          }
+        }
+      },
+      "SpaceRow": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "description",
+          "quota",
+          "members",
+          "disabled",
+          "driveId",
+          "used",
+          "state",
+          "links"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "team",
+              "project"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quota": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "driveId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "used": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "active",
+              "disabled"
+            ]
+          },
+          "links": {
+            "type": "integer",
+            "description": "Working links to people outside."
+          }
+        }
+      },
+      "SpaceList": {
+        "type": "object",
+        "required": [
+          "spaces",
+          "policy",
+          "file"
+        ],
+        "properties": {
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceRow"
+            }
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy"
+          },
+          "file": {
+            "$ref": "#/components/schemas/ConfigFile"
+          }
+        }
+      },
+      "NewHandover": {
+        "type": "object",
+        "required": [
+          "person",
+          "manager"
+        ],
+        "properties": {
+          "person": {
+            "type": "string",
+            "format": "email",
+            "description": "Who leaves."
+          },
+          "manager": {
+            "type": "string",
+            "format": "email",
+            "description": "Who gets their files."
+          },
+          "on": {
+            "type": "string",
+            "format": "date",
+            "description": "The day; today when left out."
+          }
+        }
+      },
+      "Handover": {
+        "type": "object",
+        "required": [
+          "id",
+          "person",
+          "manager",
+          "on",
+          "status",
+          "createdBy",
+          "createdAt",
+          "doneAt",
+          "driveId",
+          "bytes",
+          "error"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "person": {
+            "type": "string"
+          },
+          "manager": {
+            "type": "string"
+          },
+          "on": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "done",
+              "cancelled"
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "doneAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "driveId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The space the files went to."
+          },
+          "bytes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the last try failed; it is tried again at the next sync."
+          }
+        }
+      },
+      "HandoverList": {
+        "type": "object",
+        "required": [
+          "handovers"
+        ],
+        "properties": {
+          "handovers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Handover"
+            }
+          }
+        }
+      },
+      "Link": {
+        "type": "object",
+        "required": [
+          "id",
+          "driveId",
+          "space",
+          "itemId",
+          "item",
+          "folder",
+          "by",
+          "byName",
+          "for",
+          "kind",
+          "password",
+          "createdAt",
+          "expiresAt",
+          "url",
+          "opens",
+          "problem"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "driveId": {
+            "type": "string"
+          },
+          "space": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "item": {
+            "type": "string"
+          },
+          "folder": {
+            "type": "boolean"
+          },
+          "by": {
+            "type": "string"
+          },
+          "byName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "for": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Whom the link is for, as its maker named it."
+          },
+          "kind": {
+            "enum": [
+              "download",
+              "upload",
+              "edit"
+            ]
+          },
+          "password": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          },
+          "opens": {
+            "type": "integer",
+            "description": "Openings with the right password, from OpenCloud's audit log."
+          },
+          "problem": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "no-password",
+              null
+            ],
+            "description": "What the rules found that Files could not fix."
+          }
+        }
+      },
+      "LinkList": {
+        "type": "object",
+        "required": [
+          "links",
+          "policy"
+        ],
+        "properties": {
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            }
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy/properties/links"
+          }
+        }
+      },
+      "LinkOpens": {
+        "type": "object",
+        "required": [
+          "opens"
+        ],
+        "properties": {
+          "opens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "success"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "MySpace": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "groups",
+          "used",
+          "quota"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "personal",
+              "team",
+              "project",
+              "other"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "used": {
+            "type": "integer"
+          },
+          "quota": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "Me": {
+        "type": "object",
+        "required": [
+          "email",
+          "name",
+          "openCloudUrl",
+          "policy",
+          "spaces"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "openCloudUrl": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MySpace"
+            }
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "required": [
+          "path",
+          "name",
+          "folder",
+          "size",
+          "modified",
+          "contentType",
+          "fileId",
+          "hasPreview",
+          "shared"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "folder": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "modified": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "contentType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fileId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasPreview": {
+            "type": "boolean"
+          },
+          "shared": {
+            "type": "boolean",
+            "description": "In at least one link to someone outside."
+          }
+        }
+      },
+      "Folder": {
+        "type": "object",
+        "required": [
+          "path",
+          "items"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        }
+      },
+      "VersionList": {
+        "type": "object",
+        "required": [
+          "versions"
+        ],
+        "properties": {
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "modified",
+                "size"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "modified": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NewLink": {
+        "type": "object",
+        "required": [
+          "itemId"
+        ],
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "The item's name, shown on the Links page until the next sync."
+          },
+          "folder": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "download",
+              "upload"
+            ],
+            "description": "upload: people outside may only add files to the folder."
+          },
+          "for": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string"
+          },
+          "expires": {
+            "type": "string",
+            "format": "date",
+            "description": "The last day; links.maxDays from today when left out."
+          }
+        }
+      },
+      "ItemLink": {
+        "type": "object",
+        "required": [
+          "id",
+          "for",
+          "kind",
+          "password",
+          "expiresAt",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "for": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "download",
+              "upload",
+              "edit"
+            ]
+          },
+          "password": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ItemLinkList": {
+        "type": "object",
+        "required": [
+          "links",
+          "policy"
+        ],
+        "properties": {
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemLink"
+            }
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy/properties/links"
+          }
+        }
+      },
+      "Bin": {
+        "type": "object",
+        "required": [
+          "items",
+          "keepDays",
+          "leaving"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "driveId",
+                "space",
+                "kind",
+                "key",
+                "name",
+                "location",
+                "folder",
+                "size",
+                "deletedAt",
+                "keptUntil"
+              ],
+              "properties": {
+                "driveId": {
+                  "type": "string"
+                },
+                "space": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "personal",
+                    "team",
+                    "project",
+                    "other"
+                  ]
+                },
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "folder": {
+                  "type": "boolean"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "deletedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "keptUntil": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "keepDays": {
+            "type": "integer"
+          },
+          "leaving": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "person",
+                "manager",
+                "on"
+              ],
+              "properties": {
+                "person": {
+                  "type": "string"
+                },
+                "manager": {
+                  "type": "string"
+                },
+                "on": {
+                  "type": "string",
+                  "format": "date"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
