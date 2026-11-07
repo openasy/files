@@ -185,6 +185,11 @@ npm run dev     # the UI, with the API on :8080
 Tests run against OpenCloud in memory (`server/fake-opencloud.ts`) that answers the LibreGraph, WebDAV and auth-app
 calls Files makes, the way OpenCloud 7.2 does.
 
+`npm run e2e` (`e2e/run.sh`, also in CI) starts the OpenCloud that `compose.yaml` pins, with the settings above, makes
+the service account's app token as the first start does, and runs Files' server against it: the spaces file applied,
+people's accounts and spaces, uploads, versions, links with a password and their openings from the audit log, the
+recycle bin, someone leaving a group, a handover and a space taken out of the file, each checked in OpenCloud itself.
+
 ## Licence
 
 AGPL-3.0 (ADR 0008). OpenCloud is Apache-2.0; Files uses only what is in its open-source repository.

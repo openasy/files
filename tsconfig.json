@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["server", "scripts"]
+  "include": ["server", "scripts", "e2e"]
 }

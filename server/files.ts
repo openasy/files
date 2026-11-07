@@ -114,6 +114,11 @@ export function createFiles(db: DatabaseSync, oc: OpenCloud, { serviceUser, open
       .then(({ drives: seen, ...r }) => {
         last = r;
         if (seen.length) drives = seen;
+        // A handover disables the person's OpenCloud account: they are looked up again, and told so, next time.
+        for (const h of db.prepare("SELECT person FROM handovers WHERE status = 'done'").all() as Array<{ person: string }>) {
+          accounts.delete(h.person);
+          mine.delete(h.person);
+        }
         insert.run(r.at, r.ok ? 1 : 0, r.created.length, r.updated.length, r.disabled.length, r.links, r.purged, r.error);
         db.prepare("DELETE FROM sync_runs WHERE id NOT IN (SELECT id FROM sync_runs ORDER BY id DESC LIMIT 100)").run();
         if (r.created.length || r.updated.length || r.disabled.length || r.links || r.purged)
@@ -136,8 +141,9 @@ export function createFiles(db: DatabaseSync, oc: OpenCloud, { serviceUser, open
       if (!(err instanceof OpenCloudError)) throw err;
       if (err.status === 404) throw new FilesError(404, "not-found", "Not found, or not shared with you.");
       if (err.status === 403) throw new FilesError(403, "not-allowed", "OpenCloud does not let you do that here.");
-      // WebDAV answers 405 to a folder that is already there.
-      if (err.status === 405 || err.status === 409 || err.status === 412) throw new FilesError(409, "conflict", "Something with that name is already there.");
+      // WebDAV answers 405 to a folder that is already there, and 409 when the folder something goes in is not.
+      if (err.status === 405 || err.status === 412) throw new FilesError(409, "conflict", "Something with that name is already there.");
+      if (err.status === 409) throw new FilesError(409, "conflict", "The folder it goes in is not there: it may have been moved or deleted.");
       if (err.status === 507) throw new FilesError(507, "quota-exceeded", "The space is full: its quota is set in files.yaml.");
       if (err.status === 400) throw new FilesError(422, "invalid-body", err.message.replace(/^OpenCloud answered 400: /, ""));
       log("warn", "OpenCloud call failed", { error: err.message, status: err.status });
