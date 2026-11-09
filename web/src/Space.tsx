@@ -73,7 +73,7 @@ function SpaceList({ spaces, current, onPick, t }: { spaces: MySpace[]; current:
                     onClick={() => onPick(s.id)}
                     aria-current={s.id === current ? "true" : undefined}
                     className={cn(
-                      "files-space flex w-full items-center gap-2 px-3 py-1 text-left text-sm",
+                      "files-space flex w-full items-center gap-2 px-3 py-1 text-start text-sm",
                       s.id === current ? "bg-accent-soft text-accent-text" : "text-fg hover:bg-canvas",
                     )}
                   >
