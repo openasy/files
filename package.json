@@ -1,6 +1,6 @@
 {
   "name": "@openasy/files",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "OpenAsy Files: the company's files in team and project spaces on OpenCloud, with expiring links, set in a file.",
   "license": "AGPL-3.0-only",

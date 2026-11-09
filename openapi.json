@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "OpenAsy Files API",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "summary": "The company's files in team and project spaces on OpenCloud, with expiring links.",
     "description": "Every screen of Files uses this API, and so can your scripts (ADR 0014). Within `/api/v1` changes are additive only; anything removed is deprecated first (ADR 0024). Errors use Problem Details (RFC 9457).\n\nSpaces, their groups and the rules for links and the recycle bin are set in files.yaml, never through the API; Files keeps OpenCloud in step with it. A person's own files and links take the session of that person, never an API token, and go to OpenCloud as that person. Everything else takes a session or an API token, and each operation names the role it needs (`x-openasy-role`: user, viewer, editor, admin; ADR 0003).\n\nSign-in, members and API tokens are under `/api/v1/auth`, provided by [@openasy/auth](https://github.com/openasy/auth#routes).",
     "license": {

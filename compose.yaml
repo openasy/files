@@ -55,7 +55,7 @@ services:
       OC_SHARING_PUBLIC_SHARE_MUST_HAVE_PASSWORD: "true"
 
   files:
-    image: ghcr.io/openasy/files:0.1.0
+    image: ghcr.io/openasy/files:0.1.1
     restart: unless-stopped
     depends_on: [opencloud]
     read_only: true
